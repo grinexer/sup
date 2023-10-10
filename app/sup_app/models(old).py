@@ -1,0 +1,123 @@
+from django.db import models
+
+# Create your models here.
+class Organizations(models.Model):
+    organization_id=models.BigAutoField(primary_key=True)
+    organization_name=models.CharField(max_length=100)
+    ovner_user_id=models.ForeignKey('Users',on_delete=models.SET_NULL,null=True)
+    organization_status=models.CharField(max_length=15,null=True)
+    date_of_sub_end=models.DateField(null=True)
+    organization_plan=models.CharField(max_length=20,null=True)
+    organization_invite_code=models.CharField(max_length=200,null=True)
+class Users(models.Model):
+    user_id=models.BigAutoField(primary_key=True)
+    user_email = models.CharField(max_length=50)
+    user_pass = models.CharField(max_length=200)
+    user_second_name=models.CharField(max_length=30)
+    user_name=models.CharField(max_length=30)
+    user_patronymic=models.CharField(max_length=30,null=True)
+    user_phone_number=models.CharField(max_length=20,null=True)
+    user_status=models.CharField(max_length=15, null=True)
+    user_profile_photo=models.TextField(null=True)
+    user_telegram_id=models.CharField(max_length=40,null=True)
+    user_organization_id=models.ForeignKey('Organizations',on_delete=models.CASCADE,null=True)
+    user_organization_ovner=models.BooleanField(default=False)
+    user_role_id=models.ForeignKey('Role',default=1)
+    #куда отправлять уведомления e-почта/tg-телеграм
+    #    |
+    #   \/
+    user_signal_on=models.CharField(max_length=2,null=True,default='e')
+class Posts(models.Model):
+    post_id=models.BigAutoField(primary_key=True)
+    post_name=models.CharField(max_length=100)
+    post_parent_id=models.ForeignKey('Posts',on_delete=models.SET_NULL,null=True)
+    ovner_organization_id=models.ForeignKey('Organizations',on_delete=models.SET_NULL,null=True)
+    post_role_id=models.ForeignKey('Role',default=1)
+class Users_of_Post(models.Model):
+    post_id=models.ForeignKey('Posts',on_delete=models.CASCADE)
+    user_id=models.ForeignKey('Users',on_delete=models.CASCADE)
+class Tasks(models.Model):
+    task_id=models.BigAutoField(primary_key=True)
+    task_name=models.CharField(max_length=30)
+    task_full_text=models.TextField(null=True)
+    task_file=models.TextField(null=True)
+    task_start=models.DateField()
+    task_end=models.DateField()
+    tasl_fact_end_time=models.DateTimeField(null=True)
+    task_creator_post_id=models.ForeignKey('Posts',on_delete=models.CASCADE)
+    #false- если любой из post; true -если должны закрыть все
+    task_close_by_all=models.BooleanField(default=False)
+    #z-завершена nz-не завершена
+    task_status=models.BooleanField(default=False)
+    #o-обычная;s-срочная;d-ДСП(прямое поручение);i-информационная(ознакомительная)
+    task_type=models.CharField(max_length=2,default='o')
+class Task_for_post(models.Model):
+    task_relat_id=models.BigAutoField(primary_key=True)
+    task_id=models.ForeignKey('Tasks',on_delete=models.CASCADE)
+    post_id=models.ForeignKey('Posts',on_delete=models.CASCADE)
+    #i-исполнитель;n-наблюдатель;s-соисполнитель
+    tfp_who=models.CharField(max_length=2)
+class Task_who_close(models.Model):
+    task_relat_id=models.ForeignKey('Task_for_post',on_delete=models.CASCADE)
+    user_id=models.ForeignKey('Users',on_delete=models.CASCADE)
+    task_closed=models.BooleanField(default=False)
+class Comments(models.Model):
+    comment_id=models.BigAutoField(primary_key=True)
+    comment_send_time=models.DateTimeField()
+    comment_text=models.TextField(null=True)
+    comment_files=models.TextField(null=True)
+    comment_sended_by_user=models.ForeignKey('Users',on_delete=models.CASCADE)
+    comment_task_id=models.ForeignKey('Task_for_Post',on_delete=models.CASCADE)
+class Calendar_events(models.Model):
+    cal_event_id=models.BigAutoField(primary_key=True)
+    cal_event_name=models.CharField(max_length=200)
+    cal_event_date=models.DateField()
+    cal_event_time=models.TimeField(null=True)
+    #true-целый день;false-не целый день
+    cal_event_full_day=models.BooleanField(default=False)
+    cal_event_est_h=models.SmallIntegerField(null=True,default=1)
+    cal_event_est_m=models.SmallIntegerField(null=True,default=0)
+    cal_event_place=models.CharField(max_length=100)
+    #количество минут для уведомления 60|30|10 или не уведомлять
+    cal_event_notifik=models.IntegerField(null=True)
+    cal_event_personal=models.BooleanField(default=False)
+    cal_event_for_user=models.ForeignKey('Users',null=True,on_delete=models.CASCADE)
+    cal_event_for_org=models.ForeignKey('Organizations',on_delete=models.CASCADE)
+    cal_event_for_all=models.BooleanField(default=False)
+class Members_calendar_event(models.Model):
+    cal_event_id=models.ForeignKey('Calendar_events',on_delete=models.CASCADE)
+    cal_event_user_id=models.ForeignKey('Users',on_delete=models.CASCADE)
+    cal_event_accepted=models.BooleanField(default=False)
+class Role(models.Model):
+    role_id=models.BigAutoField(primary_key=True)
+    can_see_organization_calendar=models.BooleanField(default=True)
+    can_create_task_from_lower_to_higher=models.BooleanField(default=False)
+    can_create_task_for_not_connectet_posts=models.BooleanField(default=False)
+    can_change_user_rights=models.BooleanField(default=False)
+    can_create_related_posts=models.BooleanField(default=False)
+    can_change_related_posts=models.BooleanField(default=False)
+    can_delete_related_posts=models.BooleanField(default=False)
+    can_create_any_posts=models.BooleanField(default=False)
+    can_change_any_posts=models.BooleanField(default=False)
+    can_delete_any_posts=models.BooleanField(default=False)
+    can_invite_user=models.BooleanField(default=False)
+    can_delete_user=models.BooleanField(default=False)
+    can_see_other_posts_tasks=models.BooleanField(default=False)
+    can_change_other_posts_tasks=models.BooleanField(default=False)
+    can_delete_other_posts_tasks=models.BooleanField(default=False)
+    have_personal_cal=models.BooleanField(default=True)
+    can_create_multi_person_cal_event=models.BooleanField(default=False)
+    can_see_knowledge_base=models.BooleanField(default=True)
+    can_see_organizations_chek_lists=models.BooleanField(default=True)
+    can_change_organizations_chek_lists=models.BooleanField(default=False)
+    can_add_organizations_chek_lists=models.BooleanField(default=False)
+    can_delete_organizations_chek_lists=models.BooleanField(default=False)
+    can_see_sample_documents=models.BooleanField(default=True)
+    can_change_sample_documents=models.BooleanField(default=False)
+    can_add_sample_documents=models.BooleanField(default=False)
+    can_delete_sample_documents=models.BooleanField(default=False)
+    can_see_reports=models.BooleanField(default=False)
+class Org_rights(models.Model):
+    organization_id=models.ForeignKey('Organizations',on_delete=models.CASCADE)
+    task_from_lower_to_higher=models.BooleanField(default=False)
+    task_for_not_connectet_posts=models.BooleanField(default=False)
